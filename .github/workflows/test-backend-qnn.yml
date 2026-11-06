@@ -10,6 +10,15 @@ on:
     tags:
       - ciflow/nightly/*
   pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      force-full:
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
 
 concurrency:
@@ -24,11 +33,11 @@ jobs:
       contents: read
     with:
       backend: qnn
-      flows: >-
-        ${{ github.event_name == 'pull_request'
-            && '["qnn"]'
-            || '["qnn", "qnn_16a16w", "qnn_16a8w", "qnn_16a4w", "qnn_16a4w_block", "qnn_8a8w"]' }}
-      ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      flows: '["qnn","qnn_16a16w","qnn_16a8w","qnn_16a4w","qnn_16a4w_block","qnn_8a8w"]'
+      reduced-flows: '["qnn"]'
+      backend-paths: '["backends/qualcomm/**","examples/qualcomm/**",".github/workflows/test-backend-qnn.yml"]'
+      force-full: ${{ inputs.force-full || false }}
+      ref: ${{ inputs.ref || (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}
       timeout: 120
       run-linux: true
       runner-linux: mt-l-x86iavx512-32-256

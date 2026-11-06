@@ -96,10 +96,27 @@ jobs:
             echo "should-skip=false" >> $GITHUB_OUTPUT
           fi
 
+  backend-qualification:
+    needs: check-if-aar-exists
+    if: ${{ !github.event.pull_request.head.repo.fork && needs.check-if-aar-exists.outputs.should-skip != 'true' && (inputs.upload_to_maven || inputs.version != '') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      sha: ${{ steps.qualification.outputs.sha }}
+    steps:
+      - id: qualification
+        uses: pytorch/test-infra/.github/actions/check-backend-qualification@05c6d36f4fc3ee15eb849aa3cd77c44537985867
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
+          github-token: ${{ github.token }}
+
   build-aar:
     name: build-aar
-    needs: [docker-image, check-if-aar-exists]
-    if: ${{ !github.event.pull_request.head.repo.fork && needs.check-if-aar-exists.outputs.should-skip != 'true' }}
+    needs: [docker-image, check-if-aar-exists, backend-qualification]
+    if: ${{ !cancelled() && !github.event.pull_request.head.repo.fork && needs.docker-image.result == 'success' && needs.check-if-aar-exists.result == 'success' && needs.check-if-aar-exists.outputs.should-skip != 'true' && (needs.backend-qualification.result == 'success' || needs.backend-qualification.result == 'skipped') }}
     uses: pytorch/test-infra/.github/workflows/linux_job_v3.yml@main
     secrets: inherit
     permissions:
@@ -109,7 +126,7 @@ jobs:
       secrets-env: EXECUTORCH_MAVEN_SIGNING_KEYID EXECUTORCH_MAVEN_SIGNING_PASSWORD EXECUTORCH_MAVEN_CENTRAL_PASSWORD EXECUTORCH_MAVEN_CENTRAL_USERNAME EXECUTORCH_MAVEN_SIGNING_GPG_KEY_CONTENTS
       docker-image: ${{ needs.docker-image.outputs.docker-registry }}/ci-image:executorch-ubuntu-22.04-clang12-android-${{ needs.docker-image.outputs.ci-docker-hash }}
       submodules: 'recursive'
-      ref: ${{ inputs.source_ref || github.sha }}
+      ref: ${{ needs.backend-qualification.outputs.sha || inputs.source_ref || github.sha }}
       timeout: 90
       upload-artifact: android-apps
       upload-artifact-to-s3: true

@@ -10,6 +10,15 @@ on:
     tags:
       - ciflow/nightly/*
   pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      force-full:
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       save-goldens:
@@ -29,11 +38,11 @@ jobs:
       contents: read
     with:
       backend: xnnpack
-      flows: >-
-        ${{ github.event_name == 'pull_request'
-            && '["xnnpack"]'
-            || '["xnnpack", "xnnpack_dynamic_int8_per_channel", "xnnpack_static_int8_per_channel", "xnnpack_static_int8_per_tensor"]' }}
-      ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      flows: '["xnnpack","xnnpack_dynamic_int8_per_channel","xnnpack_static_int8_per_channel","xnnpack_static_int8_per_tensor"]'
+      reduced-flows: '["xnnpack"]'
+      backend-paths: '["backends/xnnpack/**","examples/xnnpack/**",".github/workflows/test-backend-xnnpack.yml"]'
+      force-full: ${{ inputs.force-full || false }}
+      ref: ${{ inputs.ref || (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}
       timeout: 120
       run-linux: true
       # The nightly keeps writing goldens: they are what the Android instrumentation

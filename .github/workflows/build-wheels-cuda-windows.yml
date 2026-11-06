@@ -77,6 +77,10 @@ jobs:
           echo "matrix=${MATRIX_BLOB}" >> "${GITHUB_OUTPUT}"
 
   build:
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
     needs: filter-matrix
     strategy:
       fail-fast: false

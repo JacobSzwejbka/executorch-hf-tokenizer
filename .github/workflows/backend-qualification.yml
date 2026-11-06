@@ -1,0 +1,42 @@
+name: Backend Qualification
+
+on:
+  push:
+    branches:
+      - nightly
+      - release/*
+    tags:
+      - v*
+      - ciflow/backend/*
+      - ciflow/binaries/*
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: backend-qualification-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  qnn:
+    uses: ./.github/workflows/test-backend-qnn.yml
+    with:
+      ref: ${{ github.sha }}
+      force-full: true
+  arm:
+    uses: ./.github/workflows/test-backend-arm.yml
+    with:
+      ref: ${{ github.sha }}
+      force-full: true
+  xnnpack:
+    uses: ./.github/workflows/test-backend-xnnpack.yml
+    with:
+      ref: ${{ github.sha }}
+      force-full: true
+  vulkan:
+    uses: ./.github/workflows/test-backend-vulkan.yml
+    with:
+      ref: ${{ github.sha }}
+      force-full: true

@@ -1,0 +1,41 @@
+name: Test backend CI policy
+on:
+  pull_request:
+    paths:
+      - .github/scripts/*select_backend_flows.py
+      - .github/workflows/_test_backend.yml
+      - .github/workflows/test-backend-*.yml
+      - .github/workflows/backend-qualification.yml
+      - .github/workflows/test-backend-ci-policy.yml
+  push:
+    tags:
+      - ciflow/backend/*
+permissions:
+  contents: read
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python3 .github/scripts/test_select_backend_flows.py
+  qualification-barrier:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - id: qualification
+        uses: pytorch/test-infra/.github/actions/check-backend-qualification@05c6d36f4fc3ee15eb849aa3cd77c44537985867
+        with:
+          ref: ${{ github.sha }}
+          strict: 'true'
+          github-token: ${{ github.token }}
+      - name: Check the exact source was qualified
+        env:
+          QUALIFIED_SHA: ${{ steps.qualification.outputs.sha }}
+        run: test "$QUALIFIED_SHA" = "$GITHUB_SHA"
